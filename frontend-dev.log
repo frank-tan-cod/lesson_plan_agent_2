@@ -1,0 +1,34 @@
+
+> lesson-plan-agent-frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.25
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.6s
+ ○ Compiling / ...
+ ✓ Compiled / in 3.9s (523 modules)
+ GET / 200 in 4189ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 4.2s (534 modules)
+ GET /login 200 in 4346ms
+ GET / 200 in 208ms
+ ○ Compiling /register ...
+ ✓ Compiled /register in 782ms (522 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 581ms (525 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 897ms
+ ✓ Compiled in 862ms (524 modules)
+ ✓ Compiled in 286ms (269 modules)
+ ✓ Compiled in 206ms (269 modules)
+ ✓ Compiled in 655ms (269 modules)
+ ✓ Compiled in 224ms (269 modules)
+ ✓ Compiled in 218ms (269 modules)
+ ✓ Compiled in 1217ms (269 modules)
+ ✓ Compiled in 174ms (269 modules)
+ ✓ Compiled in 205ms (269 modules)
+ ✓ Compiled in 171ms (269 modules)
+ ✓ Compiled in 183ms (269 modules)
+ ✓ Compiled in 160ms (269 modules)
