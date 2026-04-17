@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from backend.app.services.presentation_generator import (  # noqa: E402
     _append_game_slides_from_plan,
     _build_generation_prompt,
+    _clean_projection_fragment,
     _normalize_generated_content,
 )
 from backend.app.schemas import PresentationContent, SlidePayload  # noqa: E402
@@ -279,6 +280,25 @@ class PresentationGenerationRulesTests(unittest.TestCase):
         self.assertEqual(len(pages), 2)
         self.assertEqual(len([line for line in pages[0].splitlines() if line.strip()]), 6)
         self.assertEqual(len([line for line in pages[1].splitlines() if line.strip()]), 6)
+
+    def test_paginate_slide_text_keeps_light_overflow_on_single_page(self) -> None:
+        text = "\n".join(["观察现象", "提出猜想", "动手实验", "记录结果", "说说发现"])
+        pages = paginate_slide_text(text, chars_per_line=12, max_lines=4)
+
+        self.assertEqual(len(pages), 1)
+        self.assertIn("说说发现", pages[0])
+
+    def test_paginate_slide_text_keeps_split_when_overflow_page_has_real_weight(self) -> None:
+        text = "\n".join(["观察现象", "提出猜想", "动手实验", "记录结果", "整理实验并归纳结论"])
+        pages = paginate_slide_text(text, chars_per_line=12, max_lines=4)
+
+        self.assertEqual(len(pages), 2)
+        self.assertIn("整理实验并归纳结论", pages[1])
+
+    def test_clean_projection_fragment_preserves_short_statement(self) -> None:
+        cleaned = _clean_projection_fragment("我们可以发现浮力增大")
+
+        self.assertEqual(cleaned, "我们可以发现浮力增大")
 
     def test_append_game_slides_replaces_probable_duplicate_game_draft(self) -> None:
         content = PresentationContent(

@@ -9,19 +9,14 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt
+
 from ..models import Plan
 from ..schemas import MiniGamePayload
 from .plan_service import PlanService
-
-try:
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.oxml.ns import qn
-    from docx.shared import Cm, Pt
-
-    DOCX_AVAILABLE = True
-except ImportError:  # pragma: no cover - exercised in environments without python-docx.
-    DOCX_AVAILABLE = False
 
 try:
     from reportlab.lib.enums import TA_CENTER
@@ -87,8 +82,6 @@ class ExportService:
     def render_plan_to_docx(self, plan: Plan, template: str = DEFAULT_TEMPLATE) -> bytes:
         """Generate a Word document from an already loaded plan."""
         self._ensure_supported_template(template)
-        if not DOCX_AVAILABLE:
-            raise ExportUnavailableError("Word 导出依赖未安装，请安装 python-docx。")
 
         document = Document()
         self._configure_docx_document(document)
@@ -381,7 +374,7 @@ class ExportService:
 
         return IMAGE_PLACEHOLDER_PATTERN.sub(repl, text)
 
-    def _configure_docx_document(self, document: Any) -> None:
+    def _configure_docx_document(self, document: Document) -> None:
         section = document.sections[0]
         section.top_margin = Cm(2.5)
         section.bottom_margin = Cm(2.5)

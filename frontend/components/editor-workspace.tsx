@@ -174,12 +174,12 @@ function buildEditorMessages(conversation: Conversation | null, docType: DocType
   return messages.length
     ? messages
     : [
-        createMessage(
-          "system",
-          `已进入${docType === "lesson" ? "教案" : "演示文稿"}编辑器。你可以直接描述修改需求。`,
-          "text"
-        )
-      ];
+      createMessage(
+        "system",
+        `已进入${docType === "lesson" ? "教案" : "演示文稿"}编辑器。你可以直接描述修改需求。`,
+        "text"
+      )
+    ];
 }
 
 function buildPendingFollowUp(conversation: Conversation | null): EditorFollowUpEvent | null {
@@ -326,6 +326,23 @@ function parseTagInput(value: string) {
     .split(/[,，\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeComposerInput(value: string) {
+  return value.replace(/\u00a0/g, " ").replace(/\u200b/g, "").replace(/\r/g, "").replace(/\n$/, "");
+}
+
+function placeCaretAtEnd(element: HTMLDivElement) {
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function PresentationImagePanel({
@@ -624,6 +641,7 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
   const { push } = useToast();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
 
   const planId = params.id;
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -631,6 +649,7 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [composerFocused, setComposerFocused] = useState(false);
   const [followUpInput, setFollowUpInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
@@ -811,12 +830,57 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
     setEditablePresentationStyle(extractPresentationStyle(plan?.metadata));
   }, [plan?.id, plan?.metadata]);
 
+  const resizeComposer = useCallback(() => {
+    const element = composerRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.style.height = "0px";
+    const nextHeight = Math.min(Math.max(element.scrollHeight, 32), 200);
+    element.style.height = `${nextHeight}px`;
+    element.style.overflowY = element.scrollHeight > 200 ? "auto" : "hidden";
+  }, []);
+
+  const focusComposer = useCallback(() => {
+    const element = composerRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.focus();
+    placeCaretAtEnd(element);
+  }, []);
+
+  const applyComposerShortcut = useCallback(
+    (value: string) => {
+      setInput(value);
+      requestAnimationFrame(() => {
+        focusComposer();
+        resizeComposer();
+      });
+    },
+    [focusComposer, resizeComposer]
+  );
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth"
     });
   }, [messages, pendingFollowUp, pendingConfirmation, streaming]);
+
+  useEffect(() => {
+    const element = composerRef.current;
+    if (!element) {
+      return;
+    }
+
+    if (normalizeComposerInput(element.innerText) !== input) {
+      element.textContent = input;
+    }
+    resizeComposer();
+  }, [input, resizeComposer]);
 
   const previewStyle = useMemo(
     () => ({
@@ -1349,10 +1413,10 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
     const nextSlides = currentSlides.map((slide, index) =>
       index === activeImageSlideIndex
         ? {
-            ...slide,
-            image_url: imageUrl,
-            image_description: slideImageDescriptionDraft.trim() || null
-          }
+          ...slide,
+          image_url: imageUrl,
+          image_description: slideImageDescriptionDraft.trim() || null
+        }
         : slide
     );
 
@@ -1544,212 +1608,180 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
   return (
     <>
       <div className="space-y-4">
-        <Card>
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge>{docType}</Badge>
+        <Card className="space-y-5">
+          <nav className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 pb-5" aria-label="编辑器功能导航">
+            {docType === "lesson" ? (
+              <>
+                {latestGeneratedPresentationId ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push(`/documents/${latestGeneratedPresentationId}/editor?type=presentation`)}
+                  >
+                    打开已保存 PPT
+                  </Button>
+                ) : null}
+                <Button
+                  onClick={() => {
+                    setGenerationStyle(extractPresentationStyle(plan?.metadata));
+                    setGeneratePresentationModalOpen(true);
+                    if (!knowledgeFiles.length) {
+                      void loadKnowledgeFiles();
+                    }
+                  }}
+                >
+                  {latestGeneratedPresentationId ? "重新生成 PPT" : "生成 PPT"}
+                </Button>
+                <Button variant="secondary" disabled={generatingGames} onClick={() => void handleGenerateGames()}>
+                  {generatingGames ? "生成小游戏中..." : miniGames.length ? "重新生成小游戏" : "生成小游戏"}
+                </Button>
+                <Button variant="secondary" onClick={() => void handleExport("docx")}>
+                  导出 Word
+                </Button>
+                <Button variant="secondary" onClick={() => void handleExport("pdf")}>
+                  导出 PDF
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEditablePresentationStyle(activePresentationStyle);
+                    setPresentationStyleModalOpen(true);
+                    if (!knowledgeFiles.length) {
+                      void loadKnowledgeFiles();
+                    }
+                  }}
+                >
+                  风格设置
+                </Button>
+                <Button variant="secondary" onClick={() => void handleExport("pptx")}>
+                  导出 PPTX
+                </Button>
+              </>
+            )}
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSavepointModalOpen(true);
+                void loadSavepoints();
+              }}
+            >
+              回退点
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!knowledgeFiles.length) {
+                  void loadKnowledgeFiles();
+                }
+                openSaveToKnowledgeModal();
+              }}
+            >
+              保存进知识库
+            </Button>
+            <Button variant="secondary" onClick={() => setPreferencesModalOpen(true)}>
+              临时偏好
+            </Button>
+            <Button variant="ghost" onClick={() => router.push(documentsHref)}>
+              返回列表
+            </Button>
+          </nav>
+
+          <div className="pt-1">
+            <h1 className="font-serif text-4xl text-ink">{plan.title}</h1>
+            {(plan.subject || plan.grade) ? (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {plan.subject ? <Badge className="bg-lagoon/10 text-lagoon">{plan.subject}</Badge> : null}
                 {plan.grade ? <Badge className="bg-amber-100 text-amber-900">{plan.grade}</Badge> : null}
               </div>
-              <h1 className="mt-4 font-serif text-4xl text-ink">{plan.title}</h1>
-              <p className="mt-2 text-sm text-steel">会话 ID：{conversationId || "等待创建"}</p>
-              {docType === "presentation" ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge className="bg-white text-steel">{THEME_LABELS[activePresentationStyle.theme]}</Badge>
-                  <Badge className="bg-white text-steel">{DENSITY_LABELS[activePresentationStyle.density]}</Badge>
-                  {activePresentationStyle.school_name ? (
-                    <Badge className="bg-white text-steel">{activePresentationStyle.school_name}</Badge>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {docType === "lesson" ? (
-                <>
-                  {latestGeneratedPresentationId ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => router.push(`/documents/${latestGeneratedPresentationId}/editor?type=presentation`)}
-                    >
-                      打开已保存 PPT
-                    </Button>
-                  ) : null}
-                  <Button
-                    onClick={() => {
-                      setGenerationStyle(extractPresentationStyle(plan?.metadata));
-                      setGeneratePresentationModalOpen(true);
-                      if (!knowledgeFiles.length) {
-                        void loadKnowledgeFiles();
-                      }
-                    }}
-                  >
-                    {latestGeneratedPresentationId ? "重新生成 PPT" : "生成 PPT"}
-                  </Button>
-                  <Button variant="secondary" disabled={generatingGames} onClick={() => void handleGenerateGames()}>
-                    {generatingGames ? "生成小游戏中..." : miniGames.length ? "重新生成小游戏" : "生成小游戏"}
-                  </Button>
-                  <Button variant="secondary" onClick={() => void handleExport("docx")}>
-                    导出 Word
-                  </Button>
-                  <Button variant="secondary" onClick={() => void handleExport("pdf")}>
-                    导出 PDF
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setEditablePresentationStyle(activePresentationStyle);
-                      setPresentationStyleModalOpen(true);
-                      if (!knowledgeFiles.length) {
-                        void loadKnowledgeFiles();
-                      }
-                    }}
-                  >
-                    风格设置
-                  </Button>
-                  <Button variant="secondary" onClick={() => void handleExport("pptx")}>
-                    导出 PPTX
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setSavepointModalOpen(true);
-                  void loadSavepoints();
-                }}
-              >
-                回退点
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (!knowledgeFiles.length) {
-                    void loadKnowledgeFiles();
-                  }
-                  openSaveToKnowledgeModal();
-                }}
-              >
-                保存进知识库
-              </Button>
-              <Button variant="secondary" onClick={() => setPreferencesModalOpen(true)}>
-                临时偏好
-              </Button>
-              <Button variant="ghost" onClick={() => router.push(documentsHref)}>
-                返回列表
-              </Button>
-            </div>
+            ) : null}
+            {docType === "presentation" ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Badge className="bg-white text-steel">{THEME_LABELS[activePresentationStyle.theme]}</Badge>
+                <Badge className="bg-white text-steel">{DENSITY_LABELS[activePresentationStyle.density]}</Badge>
+                {activePresentationStyle.school_name ? (
+                  <Badge className="bg-white text-steel">{activePresentationStyle.school_name}</Badge>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-
-          <div className="mt-6 flex items-center gap-4">
-            <span className="text-sm font-semibold text-steel">预览占比</span>
-            <input
-              type="range"
-              min={35}
-              max={70}
-              value={previewRatio}
-              onChange={(event) => setPreviewRatio(Number(event.target.value))}
-              className="w-52 accent-[#ff7a18]"
-            />
-            <span className="text-sm text-steel">{previewRatio}%</span>
-          </div>
-
-          {docType === "lesson" && latestGeneratedPresentationId ? (
-            <div className="mt-6 rounded-[24px] bg-lagoon/8 p-4 text-sm leading-6 text-steel ring-1 ring-lagoon/10">
-              <p className="font-semibold text-ink">已保存的 PPT 项目</p>
-              <p className="mt-2">
-                最近一次生成的演示文稿
-                {latestGeneratedPresentationTitle ? `：《${latestGeneratedPresentationTitle}》` : ""}
-                已经保存，可以直接继续编辑，不需要重新生成。
-              </p>
-              <p className="mt-1">
-                当前教案累计关联 {generatedPresentationCount} 个 PPT 项目。
-              </p>
-            </div>
-          ) : null}
         </Card>
 
         <div className="grid gap-4 xl:min-h-[72vh]" style={previewStyle}>
           <Card className="min-w-0 overflow-hidden">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-steel">Live Preview</p>
                 <h2 className="mt-2 font-serif text-3xl text-ink">
                   {docType === "lesson" ? "教案预览" : "PPT 效果预览"}
                 </h2>
               </div>
-              <Badge className="bg-pine/10 text-pine">实时更新</Badge>
             </div>
 
             <div className="app-scroll mt-6 max-h-[62vh] space-y-4 overflow-y-auto pr-2">
               {docType === "lesson"
                 ? [
-                    ...lessonSections(plan).map((section, index) => (
-                      <div key={`${String(section.type || section.title)}-${index}`} className="rounded-[28px] bg-sand/45 p-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <h3 className="font-serif text-2xl text-ink">
-                            {String(section.type || section.title || section.name || `章节 ${index + 1}`)}
-                          </h3>
-                          <Badge className="bg-white text-steel">
-                            {typeof section.duration === "number" ? `${section.duration} 分钟` : "未设时长"}
-                          </Badge>
-                        </div>
-                        <div className="mt-4">{renderParagraphs(section.content)}</div>
-                        {Array.isArray(section.elements) && section.elements.length ? (
-                          <div className="mt-4 space-y-2">
-                            {section.elements.map((element, elementIndex) => {
-                              const payload = element as Record<string, unknown>;
-                              return (
-                                <div key={elementIndex} className="rounded-2xl bg-white px-4 py-3 text-sm text-steel">
-                                  {String(payload.type || payload.element_type || "元素")}：{String(payload.content || payload.description || "")}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
+                  ...lessonSections(plan).map((section, index) => (
+                    <div key={`${String(section.type || section.title)}-${index}`} className="rounded-[28px] bg-sand/45 p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="font-serif text-2xl text-ink">
+                          {String(section.type || section.title || section.name || `章节 ${index + 1}`)}
+                        </h3>
+                        <Badge className="bg-white text-steel">
+                          {typeof section.duration === "number" ? `${section.duration} 分钟` : "未设时长"}
+                        </Badge>
                       </div>
-                    )),
-                    ...(miniGames.length
-                      ? [
-                          <div key="lesson-games-header" className="rounded-[28px] bg-lagoon/10 p-5 ring-1 ring-lagoon/10">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
-                                <p className="text-xs uppercase tracking-[0.24em] text-steel">Interactive Block</p>
-                                <h3 className="mt-2 font-serif text-2xl text-ink">课堂小游戏</h3>
+                      <div className="mt-4">{renderParagraphs(section.content)}</div>
+                      {Array.isArray(section.elements) && section.elements.length ? (
+                        <div className="mt-4 space-y-2">
+                          {section.elements.map((element, elementIndex) => {
+                            const payload = element as Record<string, unknown>;
+                            return (
+                              <div key={elementIndex} className="rounded-2xl bg-white px-4 py-3 text-sm text-steel">
+                                {String(payload.type || payload.element_type || "元素")}：{String(payload.content || payload.description || "")}
                               </div>
-                              <Badge className="bg-white text-lagoon">{miniGames.length} 个互动卡片</Badge>
-                            </div>
-                            <p className="mt-3 text-sm leading-6 text-steel">
-                              这里展示的是已为当前教案生成的 HTML5 小游戏，后续生成 PPT 时会自动附上入口页。
-                            </p>
-                          </div>,
-                          ...miniGames.map((game, index) => (
-                            <MiniGamePreview key={game.id || `mini-game-${index}`} game={game} index={index} />
-                          ))
-                        ]
-                      : [])
-                  ]
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  )),
+                  ...(miniGames.length
+                    ? [
+                      <div key="lesson-games-header" className="rounded-[28px] bg-lagoon/10 p-5 ring-1 ring-lagoon/10">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.24em] text-steel">Interactive Block</p>
+                            <h3 className="mt-2 font-serif text-2xl text-ink">课堂小游戏</h3>
+                          </div>
+                          <Badge className="bg-white text-lagoon">{miniGames.length} 个互动卡片</Badge>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-steel">
+                          这里展示的是已为当前教案生成的 HTML5 小游戏，后续生成 PPT 时会自动附上入口页。
+                        </p>
+                      </div>,
+                      ...miniGames.map((game, index) => (
+                        <MiniGamePreview key={game.id || `mini-game-${index}`} game={game} index={index} />
+                      ))
+                    ]
+                    : [])
+                ]
                 : previewSlides.map((slide, index) =>
-                    renderPresentationSlidePreview(
-                      slide,
-                      index,
-                      previewSlides.length,
-                      activePresentationStyle,
-                      docType === "presentation" ? openSlideImageDialog : undefined
-                    )
-                  )}
+                  renderPresentationSlidePreview(
+                    slide,
+                    index,
+                    previewSlides.length,
+                    activePresentationStyle,
+                    docType === "presentation" ? openSlideImageDialog : undefined
+                  )
+                )}
             </div>
           </Card>
 
           <Card className="min-w-0">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-steel">Streaming Chat</p>
-                <h2 className="mt-2 font-serif text-3xl text-ink">对话流</h2>
+                <h2 className="mt-2 font-serif text-3xl text-ink">对话：阐述您具体的需求</h2>
               </div>
               {streaming ? <Badge className="bg-amber-100 text-amber-900">正在生成</Badge> : null}
             </div>
@@ -1769,7 +1801,7 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
                     message.role === "user" && "ml-auto bg-ink text-white",
                     message.role === "assistant" && "bg-sand text-ink",
                     message.role === "system" &&
-                      "bg-white text-steel ring-1 ring-slate-200",
+                    "bg-white text-steel ring-1 ring-slate-200",
                     message.kind === "error" && "bg-rose-50 text-rose-900 ring-1 ring-rose-200",
                     message.kind === "tool" && "bg-lagoon/10 text-lagoon",
                     message.kind === "tool_result" && "bg-white text-lagoon ring-1 ring-lagoon/20"
@@ -1872,35 +1904,164 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
               </div>
             ) : null}
 
-            <div className="mt-5 space-y-3">
-              <Textarea
-                className="min-h-[140px]"
-                placeholder={
-                  docType === "lesson"
-                    ? "例如：把导入改成生活化实验，引导学生先做猜想。"
-                    : "例如：新增一页总结幻灯片，提炼本课三个关键词。"
-                }
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button
+            <div
+              className={cn(
+                "mx-auto mt-5 flex w-full max-w-[800px] flex-col gap-2 rounded-[28px] border bg-sand/45 px-4 py-3 text-ink shadow-[0_0_0_1px_rgba(74,158,255,0.22),0_16px_40px_rgba(74,158,255,0.18)] transition-all duration-200 ease-out sm:px-5",
+                composerFocused
+                  ? "border-[#4a9eff] shadow-[0_0_0_1px_rgba(74,158,255,0.9),0_0_24px_rgba(74,158,255,0.32)]"
+                  : "border-[#4a9eff]/70"
+              )}
+            >
+              <div className="relative">
+                {!input.trim() ? (
+                  <span className="pointer-events-none absolute left-0 top-0 text-base leading-6 text-[#7b7466]">
+                    输入消息...
+                  </span>
+                ) : null}
+                <div
+                  ref={composerRef}
+                  contentEditable={!streaming}
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label="输入消息"
+                  aria-multiline="true"
+                  tabIndex={0}
+                  className="min-h-[32px] w-full overflow-y-auto bg-transparent font-sans text-[16px] leading-6 text-ink outline-none transition-[height] duration-200 ease-out"
+                  style={{
+                    maxHeight: 200,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontFamily: "Inter, 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif"
+                  }}
+                  onFocus={() => setComposerFocused(true)}
+                  onBlur={() => setComposerFocused(false)}
+                  onInput={(event) => {
+                    setInput(normalizeComposerInput(event.currentTarget.innerText));
+                    resizeComposer();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      const content = normalizeComposerInput(event.currentTarget.innerText);
+                      if (!streaming && content.trim()) {
+                        void sendMessage(content);
+                      }
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                  <button
+                    type="button"
+                    aria-label="添加附件"
+                    disabled={streaming}
+                    className="inline-flex items-center justify-center rounded-lg p-2 text-ink transition-all duration-200 ease-out hover:bg-[#c8bea4] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9eff]/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="text-[20px] leading-none">+</span>
+                  </button>
+
+                  <span className="h-6 w-px self-center bg-[#444444]" aria-hidden="true" />
+
+                  <button
+                    type="button"
+                    disabled={streaming}
+                    onClick={() => applyComposerShortcut("/confirm")}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-[#2f78d6] transition-all duration-200 ease-out hover:bg-[#c8bea4] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9eff]/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="text-[20px] leading-none">✔</span>
+                    <span>确认</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={streaming}
+                    onClick={() => applyComposerShortcut("/cancel")}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-ink transition-all duration-200 ease-out hover:bg-[#c8bea4] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9eff]/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="text-[20px] leading-none">×</span>
+                    <span>取消</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="语音输入"
+                    disabled={streaming}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-ink transition-all duration-200 ease-out hover:bg-[#c8bea4] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9eff]/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <SafeImage
+                      src="/icons/talk.png"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="h-5 w-5 object-contain"
+                    />
+                    <span>语音输入</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  aria-label={streaming ? "发送中" : "发送消息"}
                   disabled={streaming || !input.trim()}
                   onClick={() => void sendMessage()}
-                  className="h-12 px-6"
+                  className={cn(
+                    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9eff]/70",
+                    streaming || !input.trim()
+                      ? "cursor-not-allowed bg-[#666666] text-white/70"
+                      : "bg-[#4080ff] text-white hover:bg-[#2b6cd9] active:scale-95 active:bg-[#1f57c0]"
+                  )}
                 >
-                  {streaming ? "生成中..." : "发送消息"}
-                </Button>
-                <Button variant="secondary" disabled={streaming} onClick={() => setInput("/confirm")}>
-                  填入 /confirm
-                </Button>
-                <Button variant="secondary" disabled={streaming} onClick={() => setInput("/cancel")}>
-                  填入 /cancel
-                </Button>
+                  <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M10 15V5" strokeLinecap="round" />
+                    <path d="M6.5 8.5 10 5l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               </div>
             </div>
           </Card>
         </div>
+
+        <Card className="bg-sand/45 shadow-sm">
+          <div
+            className={cn(
+              "grid gap-4",
+              docType === "lesson" && latestGeneratedPresentationId
+                ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+                : "lg:grid-cols-1"
+            )}
+          >
+            <div className="rounded-[24px] bg-white/80 p-4 ring-1 ring-slate-200">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-sm font-semibold text-steel">预览占比</span>
+                <input
+                  type="range"
+                  min={35}
+                  max={70}
+                  value={previewRatio}
+                  onChange={(event) => setPreviewRatio(Number(event.target.value))}
+                  className="w-52 max-w-full accent-[#ff7a18]"
+                />
+                <span className="text-sm text-steel">{previewRatio}%</span>
+              </div>
+            </div>
+
+            {docType === "lesson" && latestGeneratedPresentationId ? (
+              <div className="rounded-[24px] bg-white/80 p-4 text-sm leading-6 text-steel ring-1 ring-lagoon/10">
+                <p className="font-semibold text-ink">已保存的 PPT 项目</p>
+                <p className="mt-2">
+                  最近一次生成的演示文稿
+                  {latestGeneratedPresentationTitle ? `：《${latestGeneratedPresentationTitle}》` : ""}
+                  已经保存，可以直接继续编辑，不需要重新生成。
+                </p>
+                <p className="mt-1">
+                  当前教案累计关联 {generatedPresentationCount} 个 PPT 项目。
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </Card>
       </div>
 
       <Modal
@@ -2182,9 +2343,8 @@ export function EditorWorkspace({ initialDocType }: EditorWorkspaceProps) {
                 return (
                   <label
                     key={file.id}
-                    className={`flex cursor-pointer items-start gap-3 rounded-[24px] border p-4 transition ${
-                      checked ? "border-ink bg-sand/70" : "border-slate-200 bg-white"
-                    }`}
+                    className={`flex cursor-pointer items-start gap-3 rounded-[24px] border p-4 transition ${checked ? "border-ink bg-sand/70" : "border-slate-200 bg-white"
+                      }`}
                   >
                     <input
                       type="checkbox"

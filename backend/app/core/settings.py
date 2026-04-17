@@ -7,11 +7,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-except ModuleNotFoundError:
-    def load_dotenv() -> bool:
-        return False
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -29,6 +25,7 @@ class Settings:
     CHROMA_PERSIST_DIR: str
     CONVERSATION_SUMMARY_COLLECTION: str
     CORS_ALLOW_ORIGINS: tuple[str, ...]
+    CORS_ALLOW_ORIGIN_REGEX: str
     PUBLIC_BASE_URL: str
 
 
@@ -92,6 +89,10 @@ def _build_settings() -> Settings:
         "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
     )
     cors_allow_origins = tuple(item.strip() for item in raw_cors_origins.split(",") if item.strip())
+    cors_allow_origin_regex = (
+        os.getenv("CORS_ALLOW_ORIGIN_REGEX", r"^https?://(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$")
+        or r"^https?://(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$"
+    ).strip()
     public_base_url = (os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000") or "http://127.0.0.1:8000").strip().rstrip("/")
 
     return Settings(
@@ -104,6 +105,7 @@ def _build_settings() -> Settings:
         CHROMA_PERSIST_DIR=chroma_persist_dir,
         CONVERSATION_SUMMARY_COLLECTION=summary_collection,
         CORS_ALLOW_ORIGINS=cors_allow_origins,
+        CORS_ALLOW_ORIGIN_REGEX=cors_allow_origin_regex,
         PUBLIC_BASE_URL=public_base_url,
     )
 

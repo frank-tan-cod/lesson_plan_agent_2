@@ -50,6 +50,8 @@ PROJECTION_LINE_CHAR_LIMIT = 24
 PROJECTION_IMAGE_LINE_CHAR_LIMIT = 18
 TITLE_SUBTITLE_MAX_LINES = 2
 TITLE_SUBTITLE_MAX_CHARS = 34
+PROJECTION_SENTENCE_SPLIT_BUFFER = 8
+MIN_PROJECTION_REMAINDER_CHARS = 8
 GAME_DUPLICATE_TITLE_SIMILARITY = 0.62
 GAME_DUPLICATE_TEXT_SIMILARITY = 0.72
 GAME_KEYWORD_MARKERS = (
@@ -256,7 +258,7 @@ def _build_generation_prompt(
 4. 先把教案内容和用户补充材料融合成 classroom_script；slides 必须从这个课堂内容稿中拆分出来。
 5. slides 展示的是学生可见内容，不要把“教师提问方式、操作说明、设计意图、教学目标说明”直接塞进正文，除非它们本身就是给学生看的内容。
 6. 只能从当前已注册模板中选择 template，当前可用模板为：{available_templates}。
-7. 页面正文要口语化、展示化、精炼化，适合投影阅读；如果一段更适合配图，请选择带图片区的模板并填写 image_description。
+7. 页面正文要口语化、展示化、清晰具体，适合投影阅读；保留学生真正需要看到的信息，不要为了“精炼”把正文压成只剩词语标签。如果一段更适合配图，请选择带图片区的模板并填写 image_description。
 7a. 如果某页只需要主标题和可选副标题，例如封面或结束页，请优先使用 title_subtitle，并把副标题写入 subtitle 字段。
 7b. 当某页需要截图、实验照片、流程示意或板书图时，优先使用带图片区模板，并把正文控制成 2-4 行的讲解提纲，不要一边放图一边塞长段落。
 8. 幻灯片页数、是否包含封面/目录/过渡页/总结页、是否拆分页，必须完全根据当前教案内容密度、课堂节奏和用户补充材料自行决定；不要机械套用固定流程或固定页型。
@@ -323,7 +325,7 @@ def _refine_generated_payload(
                     "role": "system",
                     "content": (
                         "你是课堂课件优化编辑。"
-                        "你只做一次短 refine：修正页型、收紧正文、减少分页后的短尾页，但不要破坏原有教学顺序。"
+                        "你只做一次短 refine：修正页型、适度收紧正文、减少分页后的短尾页，但不要破坏原有教学顺序，也不要把正文压缩成只剩零散词语。"
                     ),
                 },
                 {"role": "user", "content": refine_prompt},
@@ -363,8 +365,8 @@ def _build_refine_prompt(
 1. 保持教学顺序和核心知识点，不新增教学环节。
 2. 先修页型：封面/过渡/结束页优先 `title_subtitle`；带图片说明、实验照片、示意图的页优先 `title_body_image`。
 3. 图片页优先压正文，不优先拆页。正文尽量收成 2-4 行讲解提纲；只有确实压不下时，才把补充说明放到后续纯文字页。
-4. 非图片页优先消短尾页。若只是轻微超量，先压缩措辞并合回单页；只有明显过载时再自然拆成两页以上。
-5. 正文改成适合投影的短句提纲，删掉“同学们请看”“通过刚才的实验我们可以发现”这类口头填充语。
+4. 非图片页优先消短尾页。若只是轻微超量，先合并相近短句、删口头填充语，并尽量合回单页；只有明显过载时再自然拆成两页以上。
+5. 正文改成适合投影的短句提纲，但要保留关键事实、结论、示例和判断依据；不要为了省字把一句完整信息压成只剩几个关键词。
 6. 已经合理的页尽量少改。
 6a. 如果某页承接课堂小游戏入口，保留或补上 `game_index`，不要把它改写成“课堂小游戏”纯文本页，不要展开题目/玩法/卡片内容，也不要手写 URL 或链接文案。
 7. 只输出 JSON 对象，不要解释。顶层结构仍然是：
@@ -1047,6 +1049,25 @@ def _rebalance_sparse_projected_slides(
             adjusted.append(slide)
             continue
 
+        merged_body = _merge_short_projection_lines(
+            slide.body,
+            max_chars_per_line=max(chars_per_line, 1),
+        )
+        merged_pages = paginate_slide_text(merged_body, chars_per_line=chars_per_line, max_lines=max_lines)
+        merged_tail_lines = len([line for line in merged_pages[-1].splitlines() if line.strip()])
+        if len(merged_pages) < len(pages) or (
+            len(merged_pages) == len(pages) and merged_tail_lines > tail_lines
+        ):
+            adjusted.append(
+                slide.model_copy(
+                    update={
+                        "body": merged_body,
+                        "bullet_points": _coerce_bullet_points(merged_body),
+                    }
+                )
+            )
+            continue
+
         condensed_body = _projectionize_slide_body(
             slide.body,
             max_chars_per_line=max(chars_per_line + 2, 16),
@@ -1068,6 +1089,41 @@ def _rebalance_sparse_projected_slides(
 
         adjusted.append(slide)
     return adjusted
+
+
+def _merge_short_projection_lines(body: str, *, max_chars_per_line: int) -> str:
+    """Pack sparse short lines into fuller projection lines before forcing a page split."""
+    raw_lines = str(body or "").splitlines()
+    if len(raw_lines) < 2:
+        return _coerce_text(body)
+
+    merged: list[str] = []
+    current = ""
+    for raw_line in raw_lines:
+        line = _coerce_text(raw_line)
+        if not line:
+            if current:
+                merged.append(current)
+                current = ""
+            continue
+        if not current:
+            current = line
+            continue
+
+        joiner = "，" if len(current) < max(max_chars_per_line // 2, 8) else "；"
+        candidate = f"{current.rstrip('，、；; ')}{joiner}{line.lstrip('，、；; ')}"
+        if len(candidate) <= max_chars_per_line:
+            current = candidate
+            continue
+
+        merged.append(current)
+        current = line
+
+    if current:
+        merged.append(current)
+
+    packed = "\n".join(item for item in merged if item.strip()).strip()
+    return packed or _coerce_text(body)
 
 
 def _contains_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
@@ -1189,6 +1245,8 @@ def _split_projection_sentence(sentence: str, *, max_chars_per_line: int) -> lis
         return []
     if len(cleaned) <= max_chars_per_line:
         return [cleaned]
+    if len(cleaned) <= max_chars_per_line + max(PROJECTION_SENTENCE_SPLIT_BUFFER, max_chars_per_line // 3):
+        return [cleaned]
 
     pieces = re.split(r"[，、：,:]\s*", cleaned)
     if len(pieces) <= 1:
@@ -1223,8 +1281,10 @@ def _clean_projection_fragment(fragment: str) -> str:
     cleaned = re.sub(r"^[（(]?\d+[)）.、]\s*", "", cleaned)
     for prefix in PROJECTION_LEAD_INS:
         if cleaned.startswith(prefix) and len(cleaned) > len(prefix):
-            cleaned = cleaned[len(prefix) :].strip(" ，,:：")
-            break
+            remainder = cleaned[len(prefix) :].strip(" ，,:：")
+            if len(remainder) >= MIN_PROJECTION_REMAINDER_CHARS:
+                cleaned = remainder
+                break
     cleaned = cleaned.strip("。；;，、 ")
     return cleaned
 

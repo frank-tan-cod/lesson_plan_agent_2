@@ -200,6 +200,8 @@ function rebalanceSparseTailPages(pageLines: string[][], maxLines: number) {
 }
 
 function paginateSlideText(text: string, charsPerLine: number, maxLines: number) {
+  const normalizedCharsPerLine = Math.max(charsPerLine, 1);
+  const normalizedMaxLines = Math.max(maxLines, 1);
   const paragraphs = String(text || "")
     .split("\n")
     .map((item) => item.trim());
@@ -212,17 +214,55 @@ function paginateSlideText(text: string, charsPerLine: number, maxLines: number)
       }
       return;
     }
-    lines.push(...wrapParagraph(paragraph, Math.max(charsPerLine, 1)));
+    lines.push(...wrapParagraph(paragraph, normalizedCharsPerLine));
   });
 
   if (!lines.length) {
     return [""];
   }
 
-  const pageLines = rebalanceSparseTailPages(splitLinesIntoPages(lines, Math.max(maxLines, 1)), Math.max(maxLines, 1));
+  const splitPages = splitLinesIntoPages(lines, normalizedMaxLines);
+  const singlePagePreferred = preferSinglePageForLightOverflow(splitPages, normalizedCharsPerLine, normalizedMaxLines);
+  const pageLines = rebalanceSparseTailPages(singlePagePreferred, normalizedMaxLines);
   const pages = pageLines.map((page) => page.join("\n").trim()).filter(Boolean);
 
   return pages.filter(Boolean).length ? pages.filter(Boolean) : [String(text || "").trim()];
+}
+
+function preferSinglePageForLightOverflow(pageLines: string[][], charsPerLine: number, maxLines: number) {
+  if (pageLines.length !== 2) {
+    return pageLines;
+  }
+
+  const [firstPage, secondPage] = pageLines;
+  const visibleFirstLines = firstPage.filter((line) => line.trim()).length;
+  const visibleSecondLines = secondPage.filter((line) => line.trim()).length;
+  const totalVisibleLines = visibleFirstLines + visibleSecondLines;
+  if (visibleSecondLines === 0) {
+    return [firstPage];
+  }
+  if (visibleSecondLines > Math.max(2, Math.min(3, Math.floor(maxLines / 4)))) {
+    return pageLines;
+  }
+  if (totalVisibleLines > maxLines + 1) {
+    return pageLines;
+  }
+  if (totalVisibleLines > Math.min(maxLines + 1, 6)) {
+    return pageLines;
+  }
+
+  const firstPageText = firstPage.map((line) => line.trim()).join("");
+  const secondPageText = secondPage.map((line) => line.trim()).join("");
+  if (!secondPageText) {
+    return [firstPage];
+  }
+
+  const overflowRatio = secondPageText.length / Math.max(charsPerLine, 1);
+  if (visibleFirstLines >= maxLines - 1 && overflowRatio > 0.6) {
+    return pageLines;
+  }
+
+  return [[...firstPage, ...secondPage]];
 }
 
 function resolveDensityLimits(density: PresentationDensity, charsPerLine: number, maxLines: number, hasImagePanel: boolean) {

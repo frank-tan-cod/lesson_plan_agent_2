@@ -125,7 +125,7 @@ export function DocumentsView({ initialDocType }: DocumentsViewProps) {
         ) : items.length ? (
           items.map((item) => (
             <Card key={item.id} className="group transition hover:-translate-y-0.5 hover:shadow-panel">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge>{item.doc_type === "lesson" ? "lesson" : "presentation"}</Badge>
@@ -135,7 +135,6 @@ export function DocumentsView({ initialDocType }: DocumentsViewProps) {
                   <h2 className="mt-4 font-serif text-3xl text-ink">{item.title}</h2>
                   <p className="mt-2 text-sm text-steel">最后更新：{formatDateTime(item.updated_at)}</p>
                 </div>
-                <div className="rounded-full bg-sand px-3 py-1 text-xs font-semibold text-steel">{item.id.slice(0, 8)}</div>
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">

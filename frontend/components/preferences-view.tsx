@@ -78,6 +78,7 @@ export function PreferencesView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [presetValidationErrors, setPresetValidationErrors] = useState<string[]>([]);
   const [draftValidationError, setDraftValidationError] = useState<string | null>(null);
+  const [showPresetList, setShowPresetList] = useState(false);
 
   const structuredPreferences = useMemo(
     () =>
@@ -150,19 +151,71 @@ export function PreferencesView() {
     return errors;
   }
 
+  const suggestionPanel = (
+    <Card>
+      <p className="text-sm font-semibold text-ink">解析建议</p>
+      <div className="mt-4 space-y-4">
+        {suggestions.length ? (
+          suggestions.map((item, index) => {
+            const suggestionSummaryLines = summarizeTempPreferences(item.structured_preferences);
+            return (
+              <div key={`${item.name}-${index}`} className="rounded-[24px] bg-sand/60 p-4">
+                <div className="flex items-center gap-2">
+                  <Badge>Suggestion</Badge>
+                  <span className="font-semibold text-ink">{item.name}</span>
+                </div>
+                <p className="mt-3 text-sm text-steel">{item.description}</p>
+                <div className="mt-3 space-y-2 text-sm text-steel">
+                  {suggestionSummaryLines.length ? (
+                    suggestionSummaryLines.map((line) => <p key={line}>{line}</p>)
+                  ) : (
+                    <p>暂无结构化偏好摘要。</p>
+                  )}
+                </div>
+                <p className="mt-3 text-xs uppercase tracking-[0.24em] text-steel">System Preview</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink/80">{item.prompt_injection}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.tags.map((tag) => (
+                    <Badge key={tag} className="bg-white text-steel">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <Button className="mt-4" onClick={() => fillFromSuggestion(item)}>
+                  填入表单
+                </Button>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-steel">解析完成后，建议会展示在这里，便于二次编辑后保存。</p>
+        )}
+      </div>
+    </Card>
+  );
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-      <div className="space-y-6">
+    <div className={`grid gap-6 ${showPresetList ? "xl:grid-cols-[0.9fr_1.1fr]" : ""}`}>
+      <div className="space-y-6 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-2">
         <Card>
-          <p className="text-xs uppercase tracking-[0.28em] text-steel">Preference Presets</p>
-          <h1 className="mt-2 font-serif text-4xl text-ink">全局偏好设置</h1>
-          <p className="mt-3 text-sm leading-6 text-steel">
-            预设会长期注入到编辑器提示词里。现在可以按几个常见维度选填，再补充其他自由要求。
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="mt-2 font-serif text-4xl text-ink">全局偏好设置</h1>
+              <p className="mt-3 text-sm leading-6 text-steel">
+                预设会长期注入到编辑器提示词里。
+                {!showPresetList ? " 先完成本次配置，保存后会自动展开右侧预设列表。" : ""}
+              </p>
+            </div>
+            {items.length ? (
+              <Button variant="secondary" onClick={() => setShowPresetList((current) => !current)}>
+                {showPresetList ? "收起预设列表" : "查看已有预设"}
+              </Button>
+            ) : null}
+          </div>
         </Card>
 
-        <Card>
-          <div className="space-y-4">
+        <Card className="xl:max-h-[calc(100vh-11rem)] xl:overflow-y-auto">
+          <div className="space-y-4 xl:pr-2">
             <Input
               placeholder="预设名称"
               value={form.name}
@@ -363,6 +416,7 @@ export function PreferencesView() {
                         await createPreference(payload);
                         push({ title: "预设已创建", tone: "success" });
                       }
+                      setShowPresetList(true);
                       resetForm();
                       await loadPreferences();
                     } catch (error) {
@@ -441,145 +495,111 @@ export function PreferencesView() {
             解析自然语言
           </Button>
         </Card>
+
+        {!showPresetList ? suggestionPanel : null}
       </div>
 
-      <div className="space-y-6">
-        <Card>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-steel">Active Presets</p>
-              <h2 className="mt-2 font-serif text-3xl text-ink">预设列表</h2>
+      {showPresetList ? (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-steel">Active Presets</p>
+                <h2 className="mt-2 font-serif text-3xl text-ink">预设列表</h2>
+              </div>
+              <Button variant="secondary" onClick={() => void loadPreferences()}>
+                刷新
+              </Button>
             </div>
-            <Button variant="secondary" onClick={() => void loadPreferences()}>
-              刷新
-            </Button>
-          </div>
-          <div className="mt-5 space-y-4">
-            {items.length ? (
-              items.map((item) => {
-                const presetSummaryLines = summarizeTempPreferences(item.structured_preferences);
-                return (
-                  <div key={item.id} className="rounded-[28px] border border-slate-200 bg-white p-5">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-serif text-2xl text-ink">{item.name}</h3>
-                        {item.tags.map((tag) => (
-                          <Badge key={tag} className="bg-lagoon/10 text-lagoon">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      {item.description ? <p className="mt-3 text-sm text-steel">{item.description}</p> : null}
-                      <div className="mt-3 space-y-2 text-sm text-steel">
-                        {presetSummaryLines.length ? (
-                          presetSummaryLines.map((line) => <p key={line}>{line}</p>)
-                        ) : (
-                          <p>暂无结构化偏好摘要。</p>
-                        )}
-                      </div>
-                      <p className="mt-3 text-xs uppercase tracking-[0.24em] text-steel">System Preview</p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink/80">{item.prompt_injection}</p>
-                      <p className="mt-3 text-xs text-steel">创建于 {formatDateTime(item.created_at)}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={item.is_active}
-                          onCheckedChange={async () => {
-                            try {
-                              await togglePreference(item.id);
-                              await loadPreferences();
-                            } catch (error) {
-                              push({
-                                title: "切换失败",
-                                description: error instanceof Error ? error.message : "请稍后重试。",
-                                tone: "error"
-                              });
-                            }
-                          }}
-                        />
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setForm(buildFormFromPreset(item));
-                          }}
-                        >
-                          编辑
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={async () => {
-                            if (!window.confirm(`确认删除预设 ${item.name} 吗？`)) {
-                              return;
-                            }
-                            try {
-                              await deletePreference(item.id);
-                              push({ title: "预设已删除", tone: "success" });
-                              await loadPreferences();
-                            } catch (error) {
-                              push({
-                                title: "删除失败",
-                                description: error instanceof Error ? error.message : "请稍后重试。",
-                                tone: "error"
-                              });
-                            }
-                          }}
-                        >
-                          删除
-                        </Button>
+            <div className="mt-5 space-y-4">
+              {items.length ? (
+                items.map((item) => {
+                  const presetSummaryLines = summarizeTempPreferences(item.structured_preferences);
+                  return (
+                    <div key={item.id} className="rounded-[28px] border border-slate-200 bg-white p-5">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-serif text-2xl text-ink">{item.name}</h3>
+                            {item.tags.map((tag) => (
+                              <Badge key={tag} className="bg-lagoon/10 text-lagoon">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                          {item.description ? <p className="mt-3 text-sm text-steel">{item.description}</p> : null}
+                          <div className="mt-3 space-y-2 text-sm text-steel">
+                            {presetSummaryLines.length ? (
+                              presetSummaryLines.map((line) => <p key={line}>{line}</p>)
+                            ) : (
+                              <p>暂无结构化偏好摘要。</p>
+                            )}
+                          </div>
+                          <p className="mt-3 text-xs uppercase tracking-[0.24em] text-steel">System Preview</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink/80">{item.prompt_injection}</p>
+                          <p className="mt-3 text-xs text-steel">创建于 {formatDateTime(item.created_at)}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={item.is_active}
+                            onCheckedChange={async () => {
+                              try {
+                                await togglePreference(item.id);
+                                await loadPreferences();
+                              } catch (error) {
+                                push({
+                                  title: "切换失败",
+                                  description: error instanceof Error ? error.message : "请稍后重试。",
+                                  tone: "error"
+                                });
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setShowPresetList(true);
+                              setEditingId(item.id);
+                              setForm(buildFormFromPreset(item));
+                            }}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={async () => {
+                              if (!window.confirm(`确认删除预设 ${item.name} 吗？`)) {
+                                return;
+                              }
+                              try {
+                                await deletePreference(item.id);
+                                push({ title: "预设已删除", tone: "success" });
+                                await loadPreferences();
+                              } catch (error) {
+                                push({
+                                  title: "删除失败",
+                                  description: error instanceof Error ? error.message : "请稍后重试。",
+                                  tone: "error"
+                                });
+                              }
+                            }}
+                          >
+                            删除
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-steel">当前还没有任何偏好预设。</p>
-            )}
-          </div>
-        </Card>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-steel">当前还没有任何偏好预设。</p>
+              )}
+            </div>
+          </Card>
 
-        <Card>
-          <p className="text-sm font-semibold text-ink">解析建议</p>
-          <div className="mt-4 space-y-4">
-            {suggestions.length ? (
-              suggestions.map((item, index) => {
-                const suggestionSummaryLines = summarizeTempPreferences(item.structured_preferences);
-                return (
-                  <div key={`${item.name}-${index}`} className="rounded-[24px] bg-sand/60 p-4">
-                  <div className="flex items-center gap-2">
-                    <Badge>Suggestion</Badge>
-                    <span className="font-semibold text-ink">{item.name}</span>
-                  </div>
-                  <p className="mt-3 text-sm text-steel">{item.description}</p>
-                  <div className="mt-3 space-y-2 text-sm text-steel">
-                    {suggestionSummaryLines.length ? (
-                      suggestionSummaryLines.map((line) => <p key={line}>{line}</p>)
-                    ) : (
-                      <p>暂无结构化偏好摘要。</p>
-                    )}
-                  </div>
-                  <p className="mt-3 text-xs uppercase tracking-[0.24em] text-steel">System Preview</p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink/80">{item.prompt_injection}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {item.tags.map((tag) => (
-                      <Badge key={tag} className="bg-white text-steel">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <Button className="mt-4" onClick={() => fillFromSuggestion(item)}>
-                    填入表单
-                  </Button>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-steel">解析完成后，建议会展示在这里，便于二次编辑后保存。</p>
-            )}
-          </div>
-        </Card>
-      </div>
+          {suggestionPanel}
+        </div>
+      ) : null}
     </div>
   );
 }

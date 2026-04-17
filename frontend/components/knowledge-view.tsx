@@ -246,10 +246,10 @@ export function KnowledgeView() {
       setAnswer((current) =>
         current
           ? {
-              ...current,
-              citations: current.citations.filter((item) => item.file_id !== file.id),
-              results: current.results.filter((item) => item.file_id !== file.id)
-            }
+            ...current,
+            citations: current.citations.filter((item) => item.file_id !== file.id),
+            results: current.results.filter((item) => item.file_id !== file.id)
+          }
           : null
       );
       if (highlightedFileId === file.id) {
@@ -351,41 +351,55 @@ export function KnowledgeView() {
     void loadFiles();
   }, [loadFiles]);
 
+  const layoutCardClass = "flex h-full min-h-0 flex-col overflow-hidden p-4 md:p-5";
+  const sectionTitleClass = "font-serif text-[1.72rem] leading-tight text-ink md:text-[1.95rem]";
+  const controlClass = "h-10 text-[13px]";
+  const scrollAreaClass = "app-scroll h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1";
+  const scrollAreaStyle = { scrollbarGutter: "stable" as const };
+  const dashboardGridClass =
+    "grid gap-5 xl:h-[calc(140vh-0.1rem)] xl:grid-cols-2 xl:grid-rows-[minmax(19.25rem,_0.7fr)_minmax(0,_7fr)]";
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-        <Card className="overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(35,112,116,0.14),_transparent_42%),linear-gradient(135deg,_rgba(247,239,224,0.72),_rgba(255,255,255,0.94))]">
-          <p className="text-xs uppercase tracking-[0.28em] text-steel">Knowledge Workspace</p>
-          <h1 className="mt-2 font-serif text-4xl text-ink">知识库管理</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-steel">
-            这里统一管理手动上传资料、系统自动沉淀文档，以及编辑器显式保存的知识库快照。你可以检索历史资料、管理文件信息，并打开关联文档继续编辑。
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatTile label="资料总数" value={String(totalFiles)} hint="文档、图片与自动入库资料统一管理" />
-            <StatTile label="系统沉淀" value={String(autoIngestedCount)} hint="教案创建、PPT 初稿与导出版本" />
-            <StatTile label="文档 / 图片" value={`${documentCount} / ${imageCount}`} hint="支持混合检索与类型过滤" />
+    <div className="space-y-5">
+      <div className={dashboardGridClass}>
+        <Card
+          className={cn(
+            layoutCardClass,
+            "bg-[radial-gradient(circle_at_top_left,_rgba(35,112,116,0.14),_transparent_42%),linear-gradient(135deg,_rgba(247,239,224,0.72),_rgba(255,255,255,0.94))]"
+          )}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className={sectionTitleClass}>知识库管理</h1>
+              <p className="mt-2 text-[13px] leading-6 text-steel">
+                汇总当前知识库沉淀情况，保持资料规模、来源和索引状态一眼可见。
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatTile label="资料总数" value={String(totalFiles)} hint="" />
+            <StatTile label="系统沉淀" value={String(autoIngestedCount)} hint="" />
+            <StatTile label="文档 / 图片" value={`${documentCount} / ${imageCount}`} hint="" />
             <StatTile
               label="编辑器快照"
               value={`${snapshotCount}${pendingIndexCount ? ` / 待索引 ${pendingIndexCount}` : ""}`}
-              hint="保存进知识库的当前文件快照，会附带回退点标识"
+              hint=""
             />
           </div>
         </Card>
 
-        <Card>
+        <Card className={layoutCardClass}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-steel">Upload</p>
-              <h2 className="mt-2 font-serif text-3xl text-ink">新增文件</h2>
+              <h2 className={sectionTitleClass}>新增文件</h2>
             </div>
-            <Badge className="bg-white">手动上传</Badge>
           </div>
 
-          <div className="mt-5 grid gap-4">
-            <label className="block text-sm font-medium text-ink">
+          <div className="mt-4 grid flex-1 content-start gap-3">
+            <label className="block text-[13px] font-medium text-ink">
               上传类型
               <Select
-                className="mt-2"
+                className={cn("mt-2", controlClass)}
                 value={uploadType}
                 onChange={(event) => setUploadType(event.target.value as UploadFileType)}
               >
@@ -394,11 +408,11 @@ export function KnowledgeView() {
               </Select>
             </label>
 
-            <label className="block text-sm font-medium text-ink">
+            <label className="block text-[13px] font-medium text-ink">
               选择文件
               <Input
                 ref={fileInputRef}
-                className="mt-2"
+                className={cn("mt-2", controlClass)}
                 type="file"
                 accept={uploadType === "image" ? ".png,.jpg,.jpeg,.webp,.gif,.bmp" : ".pdf,.docx,.md,.markdown"}
                 onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
@@ -407,23 +421,23 @@ export function KnowledgeView() {
             </label>
 
             {uploadType === "image" ? (
-              <label className="block text-sm font-medium text-ink">
+              <label className="block text-[13px] font-medium text-ink">
                 图片描述
                 <Textarea
-                  className="mt-2 min-h-[120px]"
+                  className="mt-2 min-h-[88px] rounded-[22px] px-4 py-3 text-[13px]"
                   placeholder="例如：浮力实验装置照片，可辅助解释沉浮现象。"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                 />
               </label>
             ) : (
-              <div className="rounded-[22px] bg-sand/55 p-4 text-sm leading-6 text-steel">
-                文档会自动抽取全文并进入知识库；如果当前环境无法完成向量化，也会保留关键词检索能力。
+              <div >
+
               </div>
             )}
 
             <Button
-              className="h-12"
+              className="mt-1 h-10 text-sm"
               disabled={isUploading || !selectedFile || (uploadType === "image" && !description.trim())}
               onClick={() => void handleUpload()}
             >
@@ -431,43 +445,49 @@ export function KnowledgeView() {
             </Button>
           </div>
         </Card>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <Card className="min-w-0">
+        <Card className={cn(layoutCardClass, "min-w-0 xl:max-h-full xl:min-h-0")}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-steel">Search</p>
-              <h2 className="mt-2 font-serif text-3xl text-ink">知识检索</h2>
-              <p className="mt-2 text-sm leading-6 text-steel">
+              <h2 className={sectionTitleClass}>知识检索</h2>
+              <p className="mt-2 text-[13px] leading-6 text-steel">
                 先做混合检索和文件聚合；如果你点“基于资料回答”，会在检索结果之上再读取命中资料内容，生成自然语言回答。
               </p>
             </div>
             <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-steel">LLM 整理</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-steel">LLM 整理</p>
               <div className="mt-2 flex items-center gap-3">
                 <Switch
                   checked={enableLlmRerank}
                   onCheckedChange={setEnableLlmRerank}
                   disabled={isSearching || isAnswering}
                 />
-                <span className="text-sm text-ink">{enableLlmRerank ? "已开启" : "已关闭"}</span>
+                <span className="text-[13px] text-ink">{enableLlmRerank ? "已开启" : "已关闭"}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.58fr))]">
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.58fr))]">
             <Input
+              className={controlClass}
               placeholder="输入问题，例如：给我一份 LangChain Agent 入门示例"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <Select value={searchFileType} onChange={(event) => setSearchFileType(event.target.value as FileFilterType)}>
+            <Select
+              className={controlClass}
+              value={searchFileType}
+              onChange={(event) => setSearchFileType(event.target.value as FileFilterType)}
+            >
               <option value="all">全部类型</option>
               <option value="document">仅文档</option>
               <option value="image">仅图片</option>
             </Select>
-            <Select value={String(searchLimit)} onChange={(event) => setSearchLimit(Number(event.target.value))}>
+            <Select
+              className={controlClass}
+              value={String(searchLimit)}
+              onChange={(event) => setSearchLimit(Number(event.target.value))}
+            >
               {SEARCH_LIMIT_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   返回 {option} 条
@@ -476,135 +496,158 @@ export function KnowledgeView() {
             </Select>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button disabled={isSearching || isAnswering || !query.trim()} onClick={() => void runSearch()}>
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
+            <Button
+              className="h-10 px-4 text-[13px]"
+              disabled={isSearching || isAnswering || !query.trim()}
+              onClick={() => void runSearch()}
+            >
               {isSearching ? "搜索中..." : "搜索结果"}
             </Button>
             <Button
               variant="secondary"
+              className="h-10 px-4 text-[13px]"
               disabled={isSearching || isAnswering || !query.trim()}
               onClick={() => void runAnswer()}
             >
               {isAnswering ? "整理回答中..." : "基于资料回答"}
             </Button>
             {hasRunQuery ? (
-              <Button variant="ghost" onClick={clearQueryState}>
+              <Button variant="ghost" className="h-10 px-4 text-[13px]" onClick={clearQueryState}>
                 清空结果
               </Button>
             ) : null}
-            <p className="text-xs text-steel">
+            <p className="text-[11px] text-steel">
               当前策略：{enableLlmRerank ? "混合检索 + LLM 结果整理" : "混合检索"}
             </p>
           </div>
 
-          {answer ? (
-            <div className="mt-5 rounded-[24px] border border-lagoon/20 bg-[linear-gradient(135deg,_rgba(35,112,116,0.08),_rgba(255,255,255,0.92))] p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className="bg-white">知识回答</Badge>
-                <Badge className="bg-white">{answer.used_llm ? "LLM 已参与" : "规则回退"}</Badge>
-                <span className="text-sm text-steel">基于命中文件内容生成，不是只看标题和摘要。</span>
+          <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+            {answer ? (
+              <div className="rounded-[24px] border border-lagoon/20 bg-[linear-gradient(135deg,_rgba(35,112,116,0.08),_rgba(255,255,255,0.92))] p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-white">知识回答</Badge>
+                  <Badge className="bg-white">{answer.used_llm ? "LLM 已参与" : "规则回退"}</Badge>
+                  <span className="text-[12px] text-steel">基于命中文件内容生成，不是只看标题和摘要。</span>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-[13px] leading-6 text-ink">{answer.answer}</p>
+                {answer.citations.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {answer.citations.map((citation) => (
+                      <Button
+                        key={citation.file_id}
+                        variant="ghost"
+                        className="rounded-full bg-white/80 px-3 py-2 text-left text-[12px]"
+                        onClick={() => locateFile(citation.file_id, citation.file_type)}
+                      >
+                        依据：{citation.filename}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-ink">{answer.answer}</p>
-              {answer.citations.length ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {answer.citations.map((citation) => (
-                    <Button
-                      key={citation.file_id}
-                      variant="ghost"
-                      className="rounded-full bg-white/80 px-3 py-2 text-left text-xs"
-                      onClick={() => locateFile(citation.file_id, citation.file_type)}
+            ) : null}
+
+            <div className={cn(scrollAreaClass, answer ? "mt-4" : "mt-1")} style={scrollAreaStyle}>
+              <div className="space-y-3 pb-1">
+                {isSearching || isAnswering ? (
+                  <SearchStatusCard
+                    title={isAnswering ? "正在整理回答" : "正在检索资料"}
+                    description={isAnswering ? "正在读取命中文档并组织自然语言回答..." : "正在整理最相关的知识资料..."}
+                  />
+                ) : results.length ? (
+                  results.map((item, index) => (
+                    <div
+                      key={item.file_id}
+                      className="rounded-[24px] border border-slate-200 bg-sand/60 p-4 shadow-soft"
                     >
-                      依据：{citation.filename}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="mt-5 space-y-3">
-            {isSearching || isAnswering ? (
-              <SearchStatusCard
-                title={isAnswering ? "正在整理回答" : "正在检索资料"}
-                description={isAnswering ? "正在读取命中文档并组织自然语言回答..." : "正在整理最相关的知识资料..."}
-              />
-            ) : results.length ? (
-              results.map((item, index) => (
-                <div
-                  key={item.file_id}
-                  className="rounded-[24px] border border-slate-200 bg-sand/60 p-4 shadow-soft"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{item.file_type}</Badge>
-                        {item.doc_type ? <Badge className="bg-white">{getDocTypeLabel(item.doc_type)}</Badge> : null}
-                        {item.source ? <Badge className="bg-white">{getSourceLabel(item.source)}</Badge> : null}
-                        <span className="truncate text-sm font-semibold text-ink">
-                          #{index + 1} {item.filename}
-                        </span>
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge>{item.file_type}</Badge>
+                            {item.doc_type ? <Badge className="bg-white">{getDocTypeLabel(item.doc_type)}</Badge> : null}
+                            {item.source ? <Badge className="bg-white">{getSourceLabel(item.source)}</Badge> : null}
+                            <span className="truncate text-[13px] font-semibold text-ink">
+                              #{index + 1} {item.filename}
+                            </span>
+                          </div>
+                          {item.summary ? <p className="mt-3 text-[13px] font-medium leading-6 text-ink">{item.summary}</p> : null}
+                          {item.match_reason ? <p className="mt-2 text-[13px] leading-6 text-steel">{item.match_reason}</p> : null}
+                        </div>
+                        <Button
+                          variant="secondary"
+                          className="h-10 shrink-0 px-4 text-[13px]"
+                          onClick={() => locateFile(item.file_id, item.file_type)}
+                        >
+                          在列表中定位
+                        </Button>
                       </div>
-                      {item.summary ? <p className="mt-3 text-sm font-medium leading-6 text-ink">{item.summary}</p> : null}
-                      {item.match_reason ? <p className="mt-2 text-sm leading-6 text-steel">{item.match_reason}</p> : null}
+
+                      <div className="mt-4 rounded-[20px] bg-white/80 p-4">
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-steel">主要片段</p>
+                        <p className="mt-2 text-[13px] leading-6 text-steel">{item.text_snippet}</p>
+                        {item.matched_snippets && item.matched_snippets.length > 1 ? (
+                          <div className="mt-4 space-y-2">
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-steel">补充证据</p>
+                            {item.matched_snippets.slice(1).map((snippet) => (
+                              <p key={`${item.file_id}-${snippet.slice(0, 24)}`} className="text-[12px] leading-5 text-steel/90">
+                                {snippet}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-steel">
+                        <span>相关度：{item.relevance_score.toFixed(3)}</span>
+                        {item.search_strategy ? <span>检索方式：{item.search_strategy}</span> : null}
+                        {item.trigger ? <span>入库触发：{getTriggerLabel(item.trigger)}</span> : null}
+                      </div>
                     </div>
-                    <Button variant="secondary" className="shrink-0" onClick={() => locateFile(item.file_id, item.file_type)}>
-                      在列表中定位
-                    </Button>
-                  </div>
-
-                  <div className="mt-4 rounded-[20px] bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-steel">主要片段</p>
-                    <p className="mt-2 text-sm leading-6 text-steel">{item.text_snippet}</p>
-                    {item.matched_snippets && item.matched_snippets.length > 1 ? (
-                      <div className="mt-4 space-y-2">
-                        <p className="text-xs uppercase tracking-[0.16em] text-steel">补充证据</p>
-                        {item.matched_snippets.slice(1).map((snippet) => (
-                          <p key={`${item.file_id}-${snippet.slice(0, 24)}`} className="text-xs leading-5 text-steel/90">
-                            {snippet}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-3 text-xs text-steel">
-                    <span>相关度：{item.relevance_score.toFixed(3)}</span>
-                    {item.search_strategy ? <span>检索方式：{item.search_strategy}</span> : null}
-                    {item.trigger ? <span>入库触发：{getTriggerLabel(item.trigger)}</span> : null}
-                  </div>
-                </div>
-              ))
-            ) : hasRunQuery ? (
-              <SearchStatusCard title="暂无命中结果" description="可以换个关键词、调整类型筛选，或先把相关资料放进知识库。" />
-            ) : (
-              <SearchStatusCard title="等待查询" description="输入问题后，点击“搜索结果”查看命中资料，或点击“基于资料回答”获取自然语言回答。" />
-            )}
+                  ))
+                ) : hasRunQuery ? (
+                  <SearchStatusCard title="暂无命中结果" description="可以换个关键词、调整类型筛选，或先把相关资料放进知识库。" />
+                ) : (
+                  <SearchStatusCard title="等待查询" description="" />
+                )}
+              </div>
+            </div>
           </div>
         </Card>
 
-        <Card>
+        <Card className={cn(layoutCardClass, "xl:max-h-full xl:min-h-0")}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-steel">Files</p>
-              <h2 className="mt-2 font-serif text-3xl text-ink">资料列表</h2>
+              <h2 className={sectionTitleClass}>资料列表</h2>
             </div>
-            <Button variant="secondary" disabled={isRefreshingFiles} onClick={() => void loadFiles()}>
+            <Button
+              variant="secondary"
+              className="h-10 px-4 text-[13px]"
+              disabled={isRefreshingFiles}
+              onClick={() => void loadFiles()}
+            >
               {isRefreshingFiles ? "刷新中..." : "刷新列表"}
             </Button>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.7fr))]">
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.7fr))]">
             <Input
+              className={controlClass}
               placeholder="按文件名、标签、来源、触发方式筛选"
               value={fileQuery}
               onChange={(event) => setFileQuery(event.target.value)}
             />
-            <Select value={fileFilterType} onChange={(event) => setFileFilterType(event.target.value as FileFilterType)}>
+            <Select
+              className={controlClass}
+              value={fileFilterType}
+              onChange={(event) => setFileFilterType(event.target.value as FileFilterType)}
+            >
               <option value="all">全部类型</option>
               <option value="document">仅文档</option>
               <option value="image">仅图片</option>
             </Select>
             <Select
+              className={controlClass}
               value={fileOriginFilter}
               onChange={(event) => setFileOriginFilter(event.target.value as OriginFilterType)}
             >
@@ -623,90 +666,99 @@ export function KnowledgeView() {
             <Badge className="bg-white">编辑器快照 {snapshotCount}</Badge>
           </div>
 
-          <div className="mt-5 space-y-3">
-            {visibleFiles.length ? (
-              visibleFiles.map((item) => {
-                const isHighlighted = highlightedFileId === item.id;
-                const sourceLabel = getSourceLabel(item.metadata.source);
-                const triggerLabel = getTriggerLabel(item.metadata.trigger);
-                const docTypeLabel = getDocTypeLabel(item.metadata.doc_type);
-                const snapshotLabel = getSnapshotLabel(item.metadata);
-                const tags = getKnowledgeTags(item.metadata);
-                const linkedPlan = getLinkedEditorTarget(item);
-                const linkedPlanTitle = getLinkedPlanTitle(item);
-                const indexedLabel =
-                  item.metadata.indexed === false ? "仅关键词检索" : item.file_type === "image" ? "图片索引已启用" : "文档索引已启用";
+          <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className={scrollAreaClass} style={scrollAreaStyle}>
+              <div className="space-y-3 pb-1">
+                {visibleFiles.length ? (
+                  visibleFiles.map((item) => {
+                    const isHighlighted = highlightedFileId === item.id;
+                    const sourceLabel = getSourceLabel(item.metadata.source);
+                    const triggerLabel = getTriggerLabel(item.metadata.trigger);
+                    const docTypeLabel = getDocTypeLabel(item.metadata.doc_type);
+                    const snapshotLabel = getSnapshotLabel(item.metadata);
+                    const tags = getKnowledgeTags(item.metadata);
+                    const linkedPlan = getLinkedEditorTarget(item);
+                    const linkedPlanTitle = getLinkedPlanTitle(item);
+                    const indexedLabel =
+                      item.metadata.indexed === false ? "仅关键词检索" : item.file_type === "image" ? "图片索引已启用" : "文档索引已启用";
 
-                return (
-                  <div
-                    id={`knowledge-file-${item.id}`}
-                    key={item.id}
-                    className={cn(
-                      "flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-4 transition md:flex-row md:items-center md:justify-between",
-                      isHighlighted && "border-lagoon bg-lagoon/5 shadow-soft"
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{item.file_type}</Badge>
-                        {docTypeLabel ? <Badge className="bg-white">{docTypeLabel}</Badge> : null}
-                        {sourceLabel ? <Badge className="bg-white">{sourceLabel}</Badge> : null}
-                        {snapshotLabel ? <Badge className="bg-amber-100 text-amber-900">{snapshotLabel}</Badge> : null}
-                        {tags.map((tag) => (
-                          <Badge key={`${item.id}-${tag}`} className="bg-sand text-steel">
-                            {tag}
-                          </Badge>
-                        ))}
-                        <span className="truncate font-semibold text-ink">{item.filename}</span>
+                    return (
+                      <div
+                        id={`knowledge-file-${item.id}`}
+                        key={item.id}
+                        className={cn(
+                          "flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-4 transition md:flex-row md:items-center md:justify-between",
+                          isHighlighted && "border-lagoon bg-lagoon/5 shadow-soft"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge>{item.file_type}</Badge>
+                            {docTypeLabel ? <Badge className="bg-white">{docTypeLabel}</Badge> : null}
+                            {sourceLabel ? <Badge className="bg-white">{sourceLabel}</Badge> : null}
+                            {snapshotLabel ? <Badge className="bg-amber-100 text-amber-900">{snapshotLabel}</Badge> : null}
+                            {tags.map((tag) => (
+                              <Badge key={`${item.id}-${tag}`} className="bg-sand text-steel">
+                                {tag}
+                              </Badge>
+                            ))}
+                            <span className="truncate text-[13px] font-semibold text-ink">{item.filename}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-steel">
+                            <span>上传时间：{formatDateTime(item.created_at)}</span>
+                            <span>{indexedLabel}</span>
+                            {triggerLabel ? <span>触发方式：{triggerLabel}</span> : null}
+                            {linkedPlanTitle ? <span>关联文档：{linkedPlanTitle}</span> : null}
+                          </div>
+                          {item.description ? (
+                            <p className="mt-2 text-[13px] leading-6 text-steel">{item.description}</p>
+                          ) : (
+                            <p className="mt-2 text-[13px] leading-6 text-steel">当前还没有文件说明。</p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 md:max-w-[18rem] md:justify-end">
+                          {linkedPlan ? (
+                            <Button
+                              variant="secondary"
+                              className="h-10 px-4 text-[13px]"
+                              onClick={() => router.push(`/documents/${linkedPlan.planId}/editor?type=${linkedPlan.docType}`)}
+                            >
+                              打开编辑器
+                            </Button>
+                          ) : item.file_type === "document" ? (
+                            <Button
+                              variant="secondary"
+                              className="h-10 px-4 text-[13px]"
+                              onClick={() => router.push(`/documents/create?knowledge=${item.id}`)}
+                            >
+                              用于新建文档
+                            </Button>
+                          ) : null}
+                          {item.file_type === "image" ? (
+                            <Button variant="secondary" className="h-10 px-4 text-[13px]" onClick={() => openImagePreview(item)}>
+                              预览
+                            </Button>
+                          ) : null}
+                          {isHighlighted ? (
+                            <Button variant="ghost" className="h-10 px-4 text-[13px]" onClick={() => setHighlightedFileId(null)}>
+                              取消定位
+                            </Button>
+                          ) : null}
+                          <Button variant="ghost" className="h-10 px-4 text-[13px]" onClick={() => openFileManager(item)}>
+                            管理文件
+                          </Button>
+                        </div>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-steel">
-                        <span>上传时间：{formatDateTime(item.created_at)}</span>
-                        <span>{indexedLabel}</span>
-                        {triggerLabel ? <span>触发方式：{triggerLabel}</span> : null}
-                        {linkedPlanTitle ? <span>关联文档：{linkedPlanTitle}</span> : null}
-                      </div>
-                      {item.description ? (
-                        <p className="mt-2 text-sm leading-6 text-steel">{item.description}</p>
-                      ) : (
-                        <p className="mt-2 text-sm leading-6 text-steel">当前还没有文件说明。</p>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-2 md:max-w-[18rem] md:justify-end">
-                      {linkedPlan ? (
-                        <Button
-                          variant="secondary"
-                          onClick={() => router.push(`/documents/${linkedPlan.planId}/editor?type=${linkedPlan.docType}`)}
-                        >
-                          打开编辑器
-                        </Button>
-                      ) : item.file_type === "document" ? (
-                        <Button variant="secondary" onClick={() => router.push(`/documents/create?knowledge=${item.id}`)}>
-                          用于新建文档
-                        </Button>
-                      ) : null}
-                      {item.file_type === "image" ? (
-                        <Button variant="secondary" onClick={() => openImagePreview(item)}>
-                          预览
-                        </Button>
-                      ) : null}
-                      {isHighlighted ? (
-                        <Button variant="ghost" onClick={() => setHighlightedFileId(null)}>
-                          取消定位
-                        </Button>
-                      ) : null}
-                      <Button variant="ghost" onClick={() => openFileManager(item)}>
-                        管理文件
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <SearchStatusCard
-                title={files.length ? "当前筛选下没有资料" : "还没有任何知识资料"}
-                description={files.length ? "可以放宽类型或来源筛选。" : "上传文档、图片，或先生成教案 / PPT 初稿来自动沉淀资料。"}
-              />
-            )}
+                    );
+                  })
+                ) : (
+                  <SearchStatusCard
+                    title={files.length ? "当前筛选下没有资料" : "还没有任何知识资料"}
+                    description={files.length ? "可以放宽类型或来源筛选。" : "上传文档、图片，或先生成教案 / PPT 初稿来自动沉淀资料。"}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </Card>
       </div>
@@ -843,19 +895,19 @@ export function KnowledgeView() {
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-[22px] border border-white/70 bg-white/82 p-4">
-      <p className="text-xs uppercase tracking-[0.16em] text-steel">{label}</p>
-      <p className="mt-2 font-serif text-3xl text-ink">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-steel">{hint}</p>
+    <div className="flex min-h-[5.4rem] flex-col justify-between rounded-[22px] border border-white/70 bg-white/82 p-3.5">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-steel">{label}</p>
+      <p className="mt-1 font-serif text-[1.45rem] leading-tight text-ink sm:text-[1.6rem]">{value}</p>
+      {hint ? <p className="mt-1 text-[12px] leading-5 text-steel">{hint}</p> : null}
     </div>
   );
 }
 
 function SearchStatusCard({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-5">
-      <p className="text-sm font-semibold text-ink">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-steel">{description}</p>
+    <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-4">
+      <p className="text-[13px] font-semibold text-ink">{title}</p>
+      <p className="mt-2 text-[13px] leading-6 text-steel">{description}</p>
     </div>
   );
 }

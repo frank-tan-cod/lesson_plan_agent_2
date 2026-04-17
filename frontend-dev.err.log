@@ -1,1 +1,12 @@
  ⚠ Port 3000 is in use, trying 3001 instead.
+ ⨯ ./components/app-shell.tsx
+Error: Failed to read source code from D:\desktop\lesson_plan_agent_2\frontend\components\app-shell.tsx
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Import trace for requested module:
+./components/app-shell.tsx
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\3.pack.gz_' -> 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\3.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\4.pack.gz_' -> 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\4.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\1.pack.gz_' -> 'D:\desktop\lesson_plan_agent_2\frontend\.next\cache\webpack\client-development\1.pack.gz'

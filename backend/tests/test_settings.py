@@ -22,6 +22,7 @@ def _make_settings(*, api_key: str = "", summary_api_key: str = "") -> settings_
         CHROMA_PERSIST_DIR="chroma_data",
         CONVERSATION_SUMMARY_COLLECTION="conversation_summaries",
         CORS_ALLOW_ORIGINS=("http://localhost:3000",),
+        CORS_ALLOW_ORIGIN_REGEX=r"^https?://(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$",
         PUBLIC_BASE_URL="http://127.0.0.1:8000",
     )
 
@@ -63,3 +64,11 @@ def test_build_settings_uses_stable_public_base_url(monkeypatch) -> None:
     settings = settings_module._build_settings()
 
     assert settings.PUBLIC_BASE_URL == "http://127.0.0.1:8000"
+
+
+def test_build_settings_allows_localhost_any_port_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("CORS_ALLOW_ORIGIN_REGEX", raising=False)
+
+    settings = settings_module._build_settings()
+
+    assert settings.CORS_ALLOW_ORIGIN_REGEX == r"^https?://(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$"

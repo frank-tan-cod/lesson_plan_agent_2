@@ -62,3 +62,41 @@ Traceback (most recent call last):
     self._sock.shutdown(socket.SHUT_RDWR)
     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
 ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+Failed to clean vector entries for 66f90ffd-c66e-4597-9d6b-159fa8f63e81: 缺少 chromadb 依赖，无法使用知识库向量检索。
+Document upload kept without semantic index for 66f90ffd-c66e-4597-9d6b-159fa8f63e81: 缺少 sentence-transformers 依赖，无法生成向量。
+Failed to clean vector entries for 225a0953-5811-47ae-82f7-0b7c54838a71: 缺少 chromadb 依赖，无法使用知识库向量检索。
+Document upload kept without semantic index for 225a0953-5811-47ae-82f7-0b7c54838a71: 缺少 sentence-transformers 依赖，无法生成向量。
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+Knowledge semantic retrieval unavailable, fallback to keyword search: 缺少 sentence-transformers 依赖，无法生成向量。
+Knowledge semantic retrieval unavailable, fallback to keyword search: 缺少 sentence-transformers 依赖，无法生成向量。
+Knowledge semantic retrieval unavailable, fallback to keyword search: 缺少 sentence-transformers 依赖，无法生成向量。
+Knowledge semantic retrieval unavailable, fallback to keyword search: 缺少 sentence-transformers 依赖，无法生成向量。

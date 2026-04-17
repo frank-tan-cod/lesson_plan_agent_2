@@ -59,13 +59,20 @@ def body_to_bullets(body: str) -> list[str]:
 
 def paginate_slide_text(text: str, *, chars_per_line: int, max_lines: int) -> list[str]:
     """Wrap slide text approximately by characters and split it into slide-sized chunks."""
-    lines = _wrap_slide_lines(text, chars_per_line=max(chars_per_line, 1))
+    normalized_chars_per_line = max(chars_per_line, 1)
+    normalized_max_lines = max(max_lines, 1)
+    lines = _wrap_slide_lines(text, chars_per_line=normalized_chars_per_line)
 
     if not lines:
         return [""]
 
-    page_lines = _split_lines_into_pages(lines, max_lines=max(max_lines, 1))
-    page_lines = _rebalance_sparse_tail_pages(page_lines, max_lines=max(max_lines, 1))
+    page_lines = _split_lines_into_pages(lines, max_lines=normalized_max_lines)
+    page_lines = _prefer_single_page_for_light_overflow(
+        page_lines,
+        chars_per_line=normalized_chars_per_line,
+        max_lines=normalized_max_lines,
+    )
+    page_lines = _rebalance_sparse_tail_pages(page_lines, max_lines=normalized_max_lines)
     pages = ["\n".join(page).strip() for page in page_lines if "\n".join(page).strip()]
 
     return [page for page in pages if page] or [str(text or "").strip()]
@@ -135,6 +142,41 @@ def _rebalance_sparse_tail_pages(page_lines: list[list[str]], *, max_lines: int)
         cursor += page_size
         remaining_lines -= page_size
     return rebalanced
+
+
+def _prefer_single_page_for_light_overflow(
+    page_lines: list[list[str]],
+    *,
+    chars_per_line: int,
+    max_lines: int,
+) -> list[list[str]]:
+    """Keep slightly overflowing content on one page when the overflow page would be too sparse."""
+    if len(page_lines) != 2:
+        return page_lines
+
+    first_page, second_page = page_lines
+    visible_first_lines = len([line for line in first_page if line.strip()])
+    visible_second_lines = len([line for line in second_page if line.strip()])
+    total_visible_lines = visible_first_lines + visible_second_lines
+    if visible_second_lines == 0:
+        return [first_page]
+    if visible_second_lines > max(2, min(3, max_lines // 4)):
+        return page_lines
+    if total_visible_lines > max_lines + 1:
+        return page_lines
+    if total_visible_lines > min(max_lines + 1, 6):
+        return page_lines
+
+    first_page_text = "".join(line.strip() for line in first_page)
+    second_page_text = "".join(line.strip() for line in second_page)
+    if not second_page_text:
+        return [first_page]
+
+    overflow_ratio = len(second_page_text) / max(chars_per_line, 1)
+    if visible_first_lines >= max_lines - 1 and overflow_ratio > 0.6:
+        return page_lines
+
+    return [[*first_page, *second_page]]
 
 
 def strip_slide_pagination_suffix(title: str) -> str:

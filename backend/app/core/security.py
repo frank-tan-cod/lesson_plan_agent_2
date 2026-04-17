@@ -6,12 +6,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-try:
-    from dotenv import load_dotenv
-except ModuleNotFoundError:
-    def load_dotenv() -> bool:
-        return False
-
+from dotenv import load_dotenv
 from fastapi import Response
 from jose import JWTError, jwt
 from passlib.context import CryptContext
