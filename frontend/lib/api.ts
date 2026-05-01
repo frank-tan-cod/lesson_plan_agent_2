@@ -20,6 +20,7 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const USER_KEY = "lesson-plan-agent-user";
+const AUTH_TOKEN_KEY = "lesson-plan-agent-token";
 
 export class ApiError extends Error {
   status: number;
@@ -49,6 +50,24 @@ export function getStoredUser() {
     return JSON.parse(value) as User;
   } catch {
     return null;
+  }
+}
+
+export function getStoredAuthToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function storeAuthToken(token: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (token) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } else {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY);
   }
 }
 
@@ -93,7 +112,7 @@ export async function apiRequest<T>(
   } = {}
 ) {
   const headers = new Headers(init.headers);
-  const token = init.token ?? null;
+  const token = init.token ?? getStoredAuthToken();
 
   if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -354,6 +373,11 @@ function parseFilename(headers: Headers, fallback: string) {
 
 async function download(path: string, init: RequestInit, fallback: string) {
   const headers = new Headers(init.headers);
+  const token = getStoredAuthToken();
+
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,

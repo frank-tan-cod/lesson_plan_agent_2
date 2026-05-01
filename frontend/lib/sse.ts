@@ -1,4 +1,4 @@
-import { ApiError, getApiBaseUrl } from "@/lib/api";
+import { ApiError, getApiBaseUrl, getStoredAuthToken } from "@/lib/api";
 import { sleep } from "@/lib/utils";
 
 interface StreamSseOptions {
@@ -59,11 +59,17 @@ export async function streamSse({ path, body, signal, retries = 1, onEvent }: St
     let hasReceivedAnyEvent = false;
 
     try {
+      const headers = new Headers({
+        "Content-Type": "application/json"
+      });
+      const token = getStoredAuthToken();
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+
       const response = await fetch(`${getApiBaseUrl()}${path}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify(body),
         signal,
         credentials: "include",

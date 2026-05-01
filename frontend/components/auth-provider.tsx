@@ -6,6 +6,7 @@ import {
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
+  storeAuthToken,
   storeUser
 } from "@/lib/api";
 import type { User } from "@/lib/types";
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("authenticated");
       })
       .catch(() => {
+        storeAuthToken(null);
         storeUser(null);
         setUser(null);
         setStatus("unauthenticated");
@@ -55,7 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function handleLogin(username: string, password: string) {
-    await loginRequest(username, password);
+    const token = await loginRequest(username, password);
+    storeAuthToken(token.access_token);
     await hydrateFromSession();
   }
 
@@ -68,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await logoutRequest();
     } finally {
+      storeAuthToken(null);
       storeUser(null);
       setUser(null);
       setStatus("unauthenticated");
