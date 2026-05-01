@@ -1,13 +1,10 @@
 [build]
-  base = "frontend"
-  command = "npm run build"
-  publish = ".next"
-[[
-plugins
-]]
-  package = "@netlify/plugin-nextjs"
+base = "frontend"
+publish = ".next"
+command = "npm run build"
 
-[
-build.environment
-]
-  NEXT_PRIVATE_STANDALONE = "true"
+[[plugins]]
+package = "@netlify/plugin-nextjs"
+
+[build.environment]
+NEXT_PRIVATE_STANDALONE = "true"
