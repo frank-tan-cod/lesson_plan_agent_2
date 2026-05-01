@@ -21,6 +21,7 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const USER_KEY = "lesson-plan-agent-user";
 const AUTH_TOKEN_KEY = "lesson-plan-agent-token";
+export const NGROK_SKIP_BROWSER_WARNING_HEADER = "ngrok-skip-browser-warning";
 
 export class ApiError extends Error {
   status: number;
@@ -94,6 +95,11 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
+export function applyApiHeaders(headers: Headers) {
+  headers.set(NGROK_SKIP_BROWSER_WARNING_HEADER, "true");
+  return headers;
+}
+
 async function parseError(response: Response) {
   try {
     const payload = (await response.json()) as { detail?: string };
@@ -111,7 +117,7 @@ export async function apiRequest<T>(
     params?: Record<string, string | number | undefined | null>;
   } = {}
 ) {
-  const headers = new Headers(init.headers);
+  const headers = applyApiHeaders(new Headers(init.headers));
   const token = init.token ?? getStoredAuthToken();
 
   if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -372,7 +378,7 @@ function parseFilename(headers: Headers, fallback: string) {
 }
 
 async function download(path: string, init: RequestInit, fallback: string) {
-  const headers = new Headers(init.headers);
+  const headers = applyApiHeaders(new Headers(init.headers));
   const token = getStoredAuthToken();
 
   if (token && !headers.has("Authorization")) {
