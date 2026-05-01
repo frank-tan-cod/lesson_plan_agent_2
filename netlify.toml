@@ -2,8 +2,6 @@
   base = "frontend"
   command = "npm run build"
   publish = ".next"
-
-# 自动启用 Next.js 官方运行时插件，支持动态路由
 [[
 plugins
 ]]
